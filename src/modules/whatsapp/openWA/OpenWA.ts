@@ -1,4 +1,5 @@
-const { create, Client } = require('@open-wa/wa-automate');
+const { create } = require('@open-wa/wa-automate');
+import { IncomingMessage, ConnectionStatus, WhatsAppBotConfig } from '../dto/WhatsAppBotDTO';
 
 class WhatsAppBot {
     client: any;
@@ -6,49 +7,51 @@ class WhatsAppBot {
     authenticated = false;
     initialized = false;
     error: string | null = null;
+
     constructor(io: any) {
-        this.client = null;
         this.io = io;
         this.init();
     }
 
     async init() {
-      try {
-        this.client = await create({
+        const config: WhatsAppBotConfig = {
             session: 'session-name',
             puppeteer: {
                 headless: false,
             },
-        });
+        };
 
-        this.client.onQR((qr: string) => {
-            this.sendQRCode(qr);
-        });
+        try {
+            this.client = await create(config);
 
-        this.client.onAuthenticated(() => {
-            this.authenticated = true;
-            console.log('Cliente autenticado');
-        });
+            this.client.onQR((qr: string) => {
+                this.sendQRCode(qr);
+            });
 
-        this.client.onAuthFail(() => {
-            console.log('Falha na autenticação');
-        });
+            this.client.onAuthenticated(() => {
+                this.authenticated = true;
+                console.log('Cliente autenticado');
+            });
 
-        this.client.onMessage((message: any) => {
-            console.log('Mensagem recebida:', message.body);
-            this.handleIncomingMessage(message);
-        });
+            this.client.onAuthFail(() => {
+                console.log('Falha na autenticação');
+            });
 
-        console.log('WhatsApp Client iniciado');
-        this.initialized = true;
-      } catch (err) {
-        console.error('Erro ao iniciar o cliente:', err);
-        if (err instanceof Error) {
-            this.error = err.message;
-        } else {
-            this.error = String(err);
+            this.client.onMessage((message: IncomingMessage) => {
+                console.log('Mensagem recebida:', message.body);
+                this.handleIncomingMessage(message);
+            });
+
+            console.log('WhatsApp Client iniciado');
+            this.initialized = true;
+        } catch (err) {
+            console.error('Erro ao iniciar o cliente:', err);
+            if (err instanceof Error) {
+                this.error = err.message;
+            } else {
+                this.error = String(err);
+            }
         }
-      }
     }
 
     sendQRCode(qr: string) {
@@ -56,7 +59,7 @@ class WhatsAppBot {
         console.log('QR Code enviado para o cliente');
     }
 
-    handleIncomingMessage(message: { from: any; body: any; timestamp: any; }) {
+    handleIncomingMessage(message: IncomingMessage) {
         if (this.client) {
             this.io.emit('newMessage', {
                 from: message.from,
@@ -81,11 +84,13 @@ class WhatsAppBot {
         }
     }
 
-    checkConnection() { 
+    checkConnection(): ConnectionStatus {
         return {
-          authenticated: this.authenticated,
-          initialized: this.initialized,
-          error: this.error
-        }
+            authenticated: this.authenticated,
+            initialized: this.initialized,
+            error: this.error
+        };
     }
 }
+
+export default WhatsAppBot;
