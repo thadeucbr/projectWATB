@@ -3,7 +3,9 @@ const { create, Client } = require('@open-wa/wa-automate');
 class WhatsAppBot {
     client: any;
     io: any;
-
+    authenticated = false;
+    initialized = false;
+    error: string | null = null;
     constructor(io: any) {
         this.client = null;
         this.io = io;
@@ -11,6 +13,7 @@ class WhatsAppBot {
     }
 
     async init() {
+      try {
         this.client = await create({
             session: 'session-name',
             puppeteer: {
@@ -23,6 +26,7 @@ class WhatsAppBot {
         });
 
         this.client.onAuthenticated(() => {
+            this.authenticated = true;
             console.log('Cliente autenticado');
         });
 
@@ -36,6 +40,15 @@ class WhatsAppBot {
         });
 
         console.log('WhatsApp Client iniciado');
+        this.initialized = true;
+      } catch (err) {
+        console.error('Erro ao iniciar o cliente:', err);
+        if (err instanceof Error) {
+            this.error = err.message;
+        } else {
+            this.error = String(err);
+        }
+      }
     }
 
     sendQRCode(qr: string) {
@@ -65,6 +78,14 @@ class WhatsAppBot {
             }
         } else {
             console.error('Client não está inicializado.');
+        }
+    }
+
+    checkConnection() { 
+        return {
+          authenticated: this.authenticated,
+          initialized: this.initialized,
+          error: this.error
         }
     }
 }
