@@ -14,7 +14,8 @@
   "dependencies": {
     "@open-wa/wa-automate": "^4.75.0",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
