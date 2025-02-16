@@ -1,15 +1,16 @@
 const { create } = require('@open-wa/wa-automate');
-import { IncomingMessage, ConnectionStatus, WhatsAppBotConfig } from '../dto/WhatsAppBotDTO';
+import { IncomingMessage, ConnectionStatus, WhatsAppBotConfig } from './dto/WhatsAppBotDTO';
+import SocketHandler from '../socket/socketHandler';
 
 class WhatsAppBot {
     client: any;
-    io: any;
     authenticated = false;
     initialized = false;
     error: string | null = null;
+    socketHandler: SocketHandler;
 
-    constructor(io: any) {
-        this.io = io;
+    constructor(socketHandler: SocketHandler) {
+        this.socketHandler = socketHandler;
         this.init();
     }
 
@@ -25,7 +26,7 @@ class WhatsAppBot {
             this.client = await create(config);
 
             this.client.onQR((qr: string) => {
-                this.sendQRCode(qr);
+                this.socketHandler.emitQRCode(qr); // Emitir QR Code através do SocketHandler
             });
 
             this.client.onAuthenticated(() => {
@@ -46,22 +47,13 @@ class WhatsAppBot {
             this.initialized = true;
         } catch (err) {
             console.error('Erro ao iniciar o cliente:', err);
-            if (err instanceof Error) {
-                this.error = err.message;
-            } else {
-                this.error = String(err);
-            }
+            this.error = err instanceof Error ? err.message : String(err);
         }
-    }
-
-    sendQRCode(qr: string) {
-        this.io.emit('qrCode', qr);
-        console.log('QR Code enviado para o cliente');
     }
 
     handleIncomingMessage(message: IncomingMessage) {
         if (this.client) {
-            this.io.emit('newMessage', {
+            this.socketHandler.emitNewMessage({
                 from: message.from,
                 body: message.body,
                 timestamp: message.timestamp
