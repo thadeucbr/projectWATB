@@ -14,7 +14,7 @@ class WhatsAppBot {
   socketHandler: SocketHandler | null = null;
 
   constructor(socketHandler: SocketHandler | null) {
-    this.socketHandler = socketHandler; // Inicializa com a instância do SocketHandler
+    this.socketHandler = socketHandler;
     this.init();
   }
 
@@ -23,14 +23,14 @@ class WhatsAppBot {
       session: 'session-name',
       puppeteer: {
         headless: true,
-        executablePath: process.env.CHROME_BIN || '/usr/bin/chromium-browser', // Ajuste para o Chrome instalado
+        executablePath: process.env.CHROME_BIN || '/usr/bin/chromium-browser',
         args: [
-          '--no-sandbox', // Desabilita o sandbox
-          '--disable-setuid-sandbox', // Desabilita o setuid sandbox
-          '--disable-dev-shm-usage', // Desabilita uso de /dev/shm
-          '--disable-gpu', // Desabilita a GPU (opcional)
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
         ],
-        useChrome: false, // Uso do Chrome configurado
+        useChrome: false,
       },
     };
 
