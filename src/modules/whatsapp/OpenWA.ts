@@ -1,88 +1,130 @@
-const { create } = require('@open-wa/wa-automate');
-import { IncomingMessage, ConnectionStatus, WhatsAppBotConfig } from './dto/WhatsAppBotDTO';
+import { create } from '@open-wa/wa-automate';
+import {
+  IncomingMessage,
+  ConnectionStatus,
+  WhatsAppBotConfig,
+} from './dto/WhatsAppBotDTO';
 import SocketHandler from '../socket/socketHandler';
 
 class WhatsAppBot {
-    client: any;
-    authenticated = false;
-    initialized = false;
-    error: string | null = null;
-    socketHandler: SocketHandler;
+  client: any;
+  authenticated = false;
+  initialized = false;
+  error: string | null = null;
+  socketHandler: SocketHandler | null = null;
 
-    constructor(socketHandler: SocketHandler) {
-        this.socketHandler = socketHandler;
-        this.init();
+  constructor(socketHandler: SocketHandler | null) {
+    this.socketHandler = socketHandler; // Inicializa com a instância do SocketHandler
+    this.init();
+  }
+
+  async init() {
+    const config: WhatsAppBotConfig = {
+      session: 'session-name',
+      puppeteer: {
+        headless: true,
+        executablePath: process.env.CHROME_BIN || '/usr/bin/chromium-browser', // Ajuste para o Chrome instalado
+        args: [
+          '--no-sandbox', // Desabilita o sandbox
+          '--disable-setuid-sandbox', // Desabilita o setuid sandbox
+          '--disable-dev-shm-usage', // Desabilita uso de /dev/shm
+          '--disable-gpu', // Desabilita a GPU (opcional)
+        ],
+        useChrome: false, // Uso do Chrome configurado
+      },
+    };
+
+    try {
+      this.client = await create(config);
+
+      this.client.onMessage((message: IncomingMessage) => {
+        console.log('Mensagem recebida:', message);
+        this.handleIncomingMessage(message);
+      });
+
+      console.log('WhatsApp Client iniciado');
+      this.initialized = true;
+    } catch (err) {
+      console.error('Erro ao iniciar o cliente:', err);
+      this.error = err instanceof Error ? err.message : String(err);
     }
+  }
 
-    async init() {
-        const config: WhatsAppBotConfig = {
-            session: 'session-name',
-            puppeteer: {
-                headless: false,
-            },
-        };
-
-        try {
-            this.client = await create(config);
-
-            this.client.onQR((qr: string) => {
-                this.socketHandler.emitQRCode(qr); // Emitir QR Code através do SocketHandler
-            });
-
-            this.client.onAuthenticated(() => {
-                this.authenticated = true;
-                console.log('Cliente autenticado');
-            });
-
-            this.client.onAuthFail(() => {
-                console.log('Falha na autenticação');
-            });
-
-            this.client.onMessage((message: IncomingMessage) => {
-                console.log('Mensagem recebida:', message.body);
-                this.handleIncomingMessage(message);
-            });
-
-            console.log('WhatsApp Client iniciado');
-            this.initialized = true;
-        } catch (err) {
-            console.error('Erro ao iniciar o cliente:', err);
-            this.error = err instanceof Error ? err.message : String(err);
-        }
-    }
-
-    handleIncomingMessage(message: IncomingMessage) {
-        if (this.client) {
+  handleIncomingMessage(message: IncomingMessage) {
+    if (this.client && this.socketHandler) {
+      switch (message.type) {
+        case 'chat':
+          // Mensagem de texto normal
+          if (message.body) {
             this.socketHandler.emitNewMessage({
-                from: message.from,
-                body: message.body,
-                timestamp: message.timestamp
+              from: message.from,
+              body: {
+                text: message.text,
+                buttonText: null,
+                options: null,
+              },
+              timestamp: message.timestamp,
+              type: 'text',
             });
-        } else {
-            console.error('Client não está inicializado.');
-        }
-    }
+          } else if (message.buttons && message.buttons.length > 0) {
+            this.socketHandler.emitNewMessage({
+              from: message.from,
+              body: {
+                text: message.text,
+                buttonText: null,
+                options: message.buttons,
+              },
+              timestamp: message.timestamp,
+              type: 'button',
+            });
+          }
+          break;
 
-    async sendMessage(to: string, message: string) {
-        if (this.client) {
-            try {
-                await this.client.sendText(to, message);
-                console.log(`Mensagem enviada para ${to}: ${message}`);
-            } catch (error) {
-                console.error(`Erro ao enviar mensagem para ${to}:`, error);
-            }
-        } else {
-            console.error('Client não está inicializado.');
-        }
-    }
+        case 'list':
+          // Mensagem de lista
+          if (message.list) {
+            this.socketHandler.emitNewMessage({
+              from: message.from,
+              body: {
+                text: message.text,
+                buttonText: message.list.buttonText,
+                options: message.list.sections[0].rows,
+              },
+              timestamp: message.timestamp,
+              type: 'list',
+            });
+          }
+          break;
 
-    checkConnection(): ConnectionStatus {
-        return {
-            authenticated: this.authenticated,
-            initialized: this.initialized,
-            error: this.error
-        };
+        default:
+          console.warn(`Tipo de mensagem desconhecido: ${message.type}`);
+          break;
+      }
+    } else {
+      console.error('Client ou SocketHandler não estão inicializados.');
     }
+  }
+
+  async sendMessage(to: string, message: string) {
+    if (this.client) {
+      try {
+        await this.client.sendText(to, message);
+        console.log(`Mensagem enviada para ${to}: ${message}`);
+      } catch (error) {
+        console.error(`Erro ao enviar mensagem para ${to}:`, error);
+      }
+    } else {
+      console.error('Client não está inicializado.');
+    }
+  }
+
+  checkConnection(): ConnectionStatus {
+    return {
+      authenticated: this.authenticated,
+      initialized: this.initialized,
+      error: this.error,
+    };
+  }
 }
 
 export default WhatsAppBot;
