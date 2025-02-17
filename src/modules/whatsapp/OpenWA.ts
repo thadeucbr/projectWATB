@@ -1,13 +1,13 @@
-import { create } from '@open-wa/wa-automate';
+import { create, Client, ChatId } from '@open-wa/wa-automate';
 import {
-  IncomingMessage,
+  CustomMessageDTO,
   ConnectionStatus,
   WhatsAppBotConfig,
 } from './dto/WhatsAppBotDTO';
 import SocketHandler from '../socket/socketHandler';
 
 class WhatsAppBot {
-  client: any;
+  client: Client | null = null;
   authenticated = false;
   initialized = false;
   error: string | null = null;
@@ -37,9 +37,10 @@ class WhatsAppBot {
     try {
       this.client = await create(config);
 
-      this.client.onMessage((message: IncomingMessage) => {
-        console.log('Mensagem recebida:', message);
-        this.handleIncomingMessage(message);
+      this.client.onMessage((message) => {
+        const customMessage = message as unknown as CustomMessageDTO;
+        console.log('Mensagem recebida:', customMessage);
+        this.handleIncomingMessage(customMessage);
       });
 
       console.log('WhatsApp Client iniciado');
@@ -50,11 +51,10 @@ class WhatsAppBot {
     }
   }
 
-  handleIncomingMessage(message: IncomingMessage) {
+  handleIncomingMessage(message: CustomMessageDTO) {
     if (this.client && this.socketHandler) {
       switch (message.type) {
         case 'chat':
-          // Mensagem de texto normal
           if (message.body) {
             this.socketHandler.emitNewMessage({
               from: message.from,
@@ -81,7 +81,6 @@ class WhatsAppBot {
           break;
 
         case 'list':
-          // Mensagem de lista
           if (message.list) {
             this.socketHandler.emitNewMessage({
               from: message.from,
@@ -105,7 +104,7 @@ class WhatsAppBot {
     }
   }
 
-  async sendMessage(to: string, message: string) {
+  async sendMessage(to: ChatId, message: string) {
     if (this.client) {
       try {
         await this.client.sendText(to, message);
