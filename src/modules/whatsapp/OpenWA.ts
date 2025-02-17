@@ -45,6 +45,7 @@ class WhatsAppBot {
 
       console.log('WhatsApp Client iniciado');
       this.initialized = true;
+      this.authenticated = true;
     } catch (err) {
       console.error('Erro ao iniciar o cliente:', err);
       this.error = err instanceof Error ? err.message : String(err);
