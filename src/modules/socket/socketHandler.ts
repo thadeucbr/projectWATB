@@ -17,6 +17,10 @@ class SocketHandler {
         this.io.on('connection', (socket) => {
             console.log('Um usuário se conectou');
 
+            socket.on('ping', (data, callback) => {
+                callback('pong');
+            })
+            
             socket.on('sendMessage', async ({ to, message }) => {
                 await this.bot.sendMessage(to, message);
             });
