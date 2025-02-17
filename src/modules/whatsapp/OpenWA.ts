@@ -56,18 +56,7 @@ class WhatsAppBot {
     if (this.client && this.socketHandler) {
       switch (message.type) {
         case 'chat':
-          if (message.body) {
-            this.socketHandler.emitNewMessage({
-              from: message.from,
-              body: {
-                text: message.text,
-                buttonText: null,
-                options: null,
-              },
-              timestamp: message.timestamp,
-              type: 'text',
-            });
-          } else if (message.buttons && message.buttons.length > 0) {
+          if (message.buttons && message.buttons.length > 0) {
             this.socketHandler.emitNewMessage({
               from: message.from,
               body: {
@@ -79,6 +68,18 @@ class WhatsAppBot {
               type: 'button',
             });
           }
+          else if (message.body) {
+            this.socketHandler.emitNewMessage({
+              from: message.from,
+              body: {
+                text: message.text,
+                buttonText: null,
+                options: null,
+              },
+              timestamp: message.timestamp,
+              type: 'text',
+            });
+          } 
           break;
 
         case 'list':
