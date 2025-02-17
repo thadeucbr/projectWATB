@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import WhatsAppBot from '../whatsapp/OpenWA';
+import { IncomingMessageDTO } from './dto/socketDTO';
 
 class SocketHandler {
     io: Server;
@@ -26,12 +27,7 @@ class SocketHandler {
         });
     }
 
-    emitQRCode(qr: string) {
-        this.io.emit('qrCode', qr);
-        console.log('QR Code enviado para o cliente');
-    }
-
-    emitNewMessage(message: any) {
+    emitNewMessage(message: IncomingMessageDTO) {
         this.io.emit('newMessage', message);
     }
 }
