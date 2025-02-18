@@ -12,6 +12,7 @@ class WhatsAppBot {
   initialized = false;
   error: string | null = null;
   socketHandler: SocketHandler | null = null;
+  phoneList = JSON.parse(process.env.PHONE_LIST || '[]');
 
   constructor(socketHandler: SocketHandler | null) {
     this.socketHandler = socketHandler;
@@ -107,7 +108,7 @@ class WhatsAppBot {
   }
 
   async sendMessage(to: ChatId, message: string) {
-    if (this.client) {
+    if (this.client && this.phoneList.some((item: any) => item.number === to)) {
       try {
         await this.client.sendText(to, message);
         console.log(`Mensagem enviada para ${to}: ${message}`);
@@ -115,6 +116,9 @@ class WhatsAppBot {
         console.error(`Erro ao enviar mensagem para ${to}:`, error);
       }
     } else {
+      if (!this.phoneList.some((item: any) => item.number === to)) { 
+        console.error(`Número ${to} não está na lista de números permitidos.`);
+      }
       console.error('Client não está inicializado.');
     }
   }

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { bot, io } from '../server';
+import apiRouter from './api';
 
 const router = Router();
 
@@ -23,4 +24,5 @@ router.get('/health', (_req, res) => {
     })
 });
 
+router.use(apiRouter);
 export default router;
