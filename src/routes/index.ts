@@ -1,9 +1,12 @@
 import { Router } from 'express';
 import { bot, io } from '../server';
 import apiRouter from './api';
+import requestLogger from '../middleware/requestLogger';
+import errorHandler from '../middleware/errorHandler';
 
 const router = Router();
 
+router.use(requestLogger)
 router.get('/health', (_req, res) => {
     const whatsappConnection = bot.checkConnection();
     const socket = io.of('/');
@@ -25,4 +28,6 @@ router.get('/health', (_req, res) => {
 });
 
 router.use(apiRouter);
+
+router.use(errorHandler)
 export default router;
