@@ -1,7 +1,7 @@
 import { createLogger, format, transports } from 'winston';
 import path from 'path';
 
-const { combine, timestamp, printf, errors } = format;
+const { combine, timestamp, printf, errors, colorize } = format;
 
 const logFormat = printf(({ level, message, timestamp, stack }) => {
   return `${timestamp} [${level.toUpperCase()}]: ${stack || message}`;
@@ -43,7 +43,11 @@ const logger = createLogger({
 if (process.env.NODE_ENV !== 'production') {
   logger.add(
     new transports.Console({
-      format: combine(format.colorize(), logFormat),
+      format: combine(
+        colorize(),
+        timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        logFormat
+      ),
     })
   );
 }
