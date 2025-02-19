@@ -5,6 +5,7 @@ import {
   WhatsAppBotConfig,
 } from './dto/WhatsAppBotDTO';
 import SocketHandler from '../socket/socketHandler';
+import logger from '../../config/logger';
 
 class WhatsAppBot {
   client: Client | null = null;
@@ -40,15 +41,15 @@ class WhatsAppBot {
 
       this.client.onMessage((message) => {
         const customMessage = message as unknown as CustomMessageDTO;
-        console.log('Mensagem recebida:', customMessage);
+        logger.info('Mensagem recebida:', customMessage);
         this.handleIncomingMessage(customMessage);
       });
 
-      console.log('WhatsApp Client iniciado');
+      logger.info('WhatsApp Client iniciado');
       this.initialized = true;
       this.authenticated = true;
     } catch (err) {
-      console.error('Erro ao iniciar o cliente:', err);
+      logger.error('Erro ao iniciar o cliente:', err);
       this.error = err instanceof Error ? err.message : String(err);
     }
   }
@@ -68,8 +69,7 @@ class WhatsAppBot {
               timestamp: message.timestamp,
               type: 'button',
             });
-          }
-          else if (message.body) {
+          } else if (message.body) {
             this.socketHandler.emitNewMessage({
               from: message.from,
               body: {
@@ -80,7 +80,7 @@ class WhatsAppBot {
               timestamp: message.timestamp,
               type: 'text',
             });
-          } 
+          }
           break;
 
         case 'list':
@@ -99,11 +99,12 @@ class WhatsAppBot {
           break;
 
         default:
-          console.warn(`Tipo de mensagem desconhecido: ${message.type}`);
+          logger.warning(`Tipo de mensagem desconhecido: ${message.type}`);
+          logger.warning('Mensagem:', message);
           break;
       }
     } else {
-      console.error('Client ou SocketHandler não estão inicializados.');
+      logger.error('Client ou SocketHandler não estão inicializados.');
     }
   }
 
@@ -111,24 +112,33 @@ class WhatsAppBot {
     if (this.client && this.phoneList.some((item: any) => item.number === to)) {
       try {
         await this.client.sendText(to, message);
-        console.log(`Mensagem enviada para ${to}: ${message}`);
+        logger.info(`Mensagem enviada para ${to}: ${message}`);
       } catch (error) {
-        console.error(`Erro ao enviar mensagem para ${to}:`, error);
+        logger.error(`Erro ao enviar mensagem para ${to}:`, error);
       }
     } else {
-      if (!this.phoneList.some((item: any) => item.number === to)) { 
-        console.error(`Número ${to} não está na lista de números permitidos.`);
+      if (!this.phoneList.some((item: any) => item.number === to)) {
+        logger.warning(`Número ${to} não está na lista de números permitidos.`);
       }
-      console.error('Client não está inicializado.');
+      logger.error('Client não está inicializado.');
     }
   }
 
   checkConnection(): ConnectionStatus {
-    return {
-      authenticated: this.authenticated,
-      initialized: this.initialized,
-      error: this.error,
-    };
+    try {
+      return {
+        authenticated: this.authenticated,
+        initialized: this.initialized,
+        error: this.error,
+      };
+    } catch (err: any) {
+      logger.error('Erro ao verificar a conexão:', err);
+      return {
+        authenticated: false,
+        initialized: false,
+        error: err,
+      };
+    }
   }
 }
 
