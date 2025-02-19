@@ -5,13 +5,18 @@ export interface SendMessageDTO {
   message: string;
 }
 
+export interface InteractiveTypeDTO {
+  name: string,
+  displayText: string,
+  url: string
+}
 export interface IncomingMessageDTO {
   from: string;
   body: {
     text: string;
     buttonText: string | null;
-    options: Array<Row> | Array<Button> | null;
+    options: Array<Row> | Array<Button> | Array<InteractiveTypeDTO> |null;
   };
   timestamp: number;
-  type: 'text' | 'button' | 'list';
+  type: 'text' | 'button' | 'list' | 'interactive';
 }

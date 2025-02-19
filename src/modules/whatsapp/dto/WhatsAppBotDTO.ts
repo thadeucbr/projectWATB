@@ -16,12 +16,22 @@ export enum CustomMessageTypes {
     BUTTONS_RESPONSE = "buttons_response",
     LIST_RESPONSE = "list_response",
     UNKNOWN = "unknown",
-    LIST = 'list'
+    LIST = 'list',
+    INTERACTIVE = 'interactive'
+}
+
+export interface InteractivePayload {
+    messageVersion: number;
+    buttons: Array<{
+        name: string;
+        buttonParamsJson: string;
+    }>;
 }
 
 // Nova interface para mensagens, sem estender a interface Message
 export interface CustomMessageDTO extends Omit<Message, 'type'> {
   type: CustomMessageTypes;
+  interactivePayload?: InteractivePayload;
 }
 
 export interface ConnectionStatus {
