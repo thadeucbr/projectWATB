@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import WhatsAppBot from '../whatsapp/OpenWA';
 import { IncomingMessageDTO } from './dto/socketDTO';
+import logger from '../../config/logger';
 
 class SocketHandler {
     io: Server;
@@ -15,7 +16,7 @@ class SocketHandler {
 
     setupListeners() {
         this.io.on('connection', (socket) => {
-            console.log('Um usuário se conectou');
+            logger.info('Um usuário se conectou');
 
             socket.on('ping', (data, callback) => {
                 callback('pong');
@@ -26,7 +27,7 @@ class SocketHandler {
             });
 
             socket.on('disconnect', () => {
-                console.log('Usuário desconectado');
+                logger.info('Usuário desconectado');
             });
         });
     }
