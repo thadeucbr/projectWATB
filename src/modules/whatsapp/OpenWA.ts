@@ -41,7 +41,7 @@ class WhatsAppBot {
 
       this.client.onMessage((message) => {
         const customMessage = message as unknown as CustomMessageDTO;
-        logger.info('Mensagem recebida:', customMessage);
+        logger.info('Mensagem recebida:', { customMessage });
         this.handleIncomingMessage(customMessage);
       });
 
@@ -98,9 +98,44 @@ class WhatsAppBot {
           }
           break;
 
+          case 'interactive':
+            if (message.interactivePayload) {
+                const buttons = message.interactivePayload.buttons.map(button => {
+                    const params = JSON.parse(button.buttonParamsJson);
+                    return {
+                        name: button.name,
+                        displayText: params.display_text,
+                        url: params.url
+                    };
+                });
+
+                this.socketHandler.emitNewMessage({
+                    from: message.from,
+                    body: {
+                        text: message.text || message.caption,
+                        buttonText: null,
+                        options: buttons,
+                    },
+                    timestamp: message.timestamp,
+                    type: 'interactive',
+                });
+                logger.info('Mensagem interativa enviada', { data: {
+                  from: message.from,
+                  body: {
+                      text: message.text || message.caption,
+                      buttonText: null,
+                      options: buttons,
+                  },
+                  timestamp: message.timestamp,
+                  type: 'interactive',
+              }})
+            } else {
+                logger.warn('Payload de mensagem interativa ausente:', { data: message });
+            }
+            break;
         default:
-          logger.warning(`Tipo de mensagem desconhecido: ${message.type}`);
-          logger.warning('Mensagem:', message);
+          logger.warn(`Tipo de mensagem desconhecido: ${message.type}`);
+          logger.warn('Mensagem:', { data: message });
           break;
       }
     } else {
