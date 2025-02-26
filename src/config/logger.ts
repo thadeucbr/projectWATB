@@ -1,5 +1,3 @@
-// src/config/logger.ts
-
 import { createLogger, format, transports } from 'winston';
 import path from 'path';
 
@@ -8,12 +6,15 @@ const { combine, timestamp, printf, errors, colorize, splat } = format;
 // Formato personalizado para os logs
 const logFormat = printf(({ level, message, timestamp, stack, ...metadata }) => {
   let logMessage = `${timestamp} [${level}]: ${stack || message}`;
-
   if (Object.keys(metadata).length) {
     logMessage += ` ${JSON.stringify(metadata)}`;
   }
-
   return logMessage;
+});
+
+// Filtro para capturar apenas logs de requisição
+const requestFilter = format((info) => {
+  return info.logType === 'request' ? info : false;
 });
 
 // Criação da instância do logger
@@ -29,7 +30,7 @@ const logger = createLogger({
     // Transporte para logs de erro
     new transports.File({
       filename: path.resolve(__dirname, '../../logs/error.log'),
-      level: 'error', // Apenas logs de erro
+      level: 'error',
       handleExceptions: true,
       maxsize: 5242880, // 5MB
       maxFiles: 5,
@@ -38,23 +39,35 @@ const logger = createLogger({
     new transports.File({
       filename: path.resolve(__dirname, '../../logs/combined.log'),
       handleExceptions: true,
-      maxsize: 5242880, // 5MB
+      maxsize: 5242880,
       maxFiles: 5,
     }),
+    // Transporte específico para logs de requisição
+    new transports.File({
+      filename: path.resolve(__dirname, '../../logs/requests.log'),
+      level: 'info',
+      handleExceptions: true,
+      maxsize: 5242880,
+      maxFiles: 5,
+      format: combine(
+        requestFilter(),
+        logFormat
+      )
+    }),
   ],
-  exitOnError: false, // Não finalizar o processo em exceções não tratadas
+  exitOnError: false,
 });
 
-// Se estivermos em desenvolvimento, também registrar no console
+// Transporte para o console em desenvolvimento
 logger.add(
   new transports.Console({
     level: process.env.NODE_ENV === 'production' ? 'error' : 'info',
     format: combine(
-      timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), // Adiciona o timestamp primeiro
-      errors({ stack: true }), // Processa os erros
-      splat(), // Permite a interpolação de strings
-      colorize({ level: true }), // Aplica a colorização após os dados já estarem definidos
-      logFormat // Por fim, formata a mensagem final
+      timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+      errors({ stack: true }),
+      splat(),
+      colorize({ level: true }),
+      logFormat
     ),
   })
 );
