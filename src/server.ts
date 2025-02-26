@@ -9,6 +9,8 @@ import logger from './config/logger';
 const PORT = process.env.PORT || 3000;
 
 const app = express();
+app.use(express.json());
+
 const { server, io } = socketIO(app);
 
 const bot = new WhatsAppBot(null);
