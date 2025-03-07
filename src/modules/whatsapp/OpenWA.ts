@@ -6,6 +6,7 @@ import {
 } from './dto/WhatsAppBotDTO';
 import SocketHandler from '../socket/socketHandler';
 import logger from '../../config/logger';
+import axios from 'axios';
 
 class WhatsAppBot {
   client: Client | null = null;
@@ -17,7 +18,9 @@ class WhatsAppBot {
 
   constructor(socketHandler: SocketHandler | null) {
     this.socketHandler = socketHandler;
-    this.init();
+    // Caso seja necessário inicializar automaticamente,
+    // descomente a linha abaixo.
+    // this.init();
   }
 
   async init() {
@@ -37,25 +40,30 @@ class WhatsAppBot {
     };
 
     try {
+      // Se estiver isolando o open-wa em um container apartado,
+      // inicialize o client apenas para casos excepcionais ou ignore.
       this.client = await create(config);
 
-      this.client.onMessage((message) => {
-        const customMessage = message as unknown as CustomMessageDTO;
-        logger.info('Mensagem recebida:', { customMessage });
-        this.handleIncomingMessage(customMessage);
-      });
+      // Removemos a escuta de onMessage, pois as mensagens serão recebidas via webhook.
+      // this.client.onMessage((message) => {
+      //   const customMessage = message as unknown as CustomMessageDTO;
+      //   logger.info('Mensagem recebida:', { customMessage });
+      //   this.handleIncomingMessage(customMessage);
+      // });
 
       logger.info('WhatsApp Client iniciado');
       this.initialized = true;
       this.authenticated = true;
     } catch (err) {
-      logger.error('Erro ao iniciar o cliente:', err);
-      this.error = err instanceof Error ? err.message : String(err);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      logger.error(`Erro ao iniciar o cliente: ${errorMsg}`);
+      this.error = errorMsg;
     }
   }
 
-  handleIncomingMessage(message: CustomMessageDTO) {
-    if (this.client && this.socketHandler) {
+  // Novo método para tratar mensagens recebidas via webhook
+  handleIncomingWebhook(message: CustomMessageDTO) {
+    if (this.socketHandler) {
       switch (message.type) {
         case 'chat':
           if (message.buttons && message.buttons.length > 0) {
@@ -98,64 +106,77 @@ class WhatsAppBot {
           }
           break;
 
-          case 'interactive':
-            if (message.interactivePayload) {
-                const buttons = message.interactivePayload.buttons.map(button => {
-                    const params = JSON.parse(button.buttonParamsJson);
-                    return {
-                        name: button.name,
-                        displayText: params.display_text,
-                        url: params.url
-                    };
-                });
+        case 'interactive':
+          if (message.interactivePayload) {
+            const buttons = message.interactivePayload.buttons.map((button) => {
+              const params = JSON.parse(button.buttonParamsJson);
+              return {
+                name: button.name,
+                displayText: params.display_text,
+                url: params.url,
+              };
+            });
+            this.socketHandler.emitNewMessage({
+              from: message.from,
+              body: {
+                text: message.text || message.caption,
+                buttonText: null,
+                options: buttons,
+              },
+              timestamp: message.timestamp,
+              type: 'interactive',
+            });
+            logger.info('Mensagem interativa enviada', {
+              data: {
+                from: message.from,
+                body: {
+                  text: message.text || message.caption,
+                  buttonText: null,
+                  options: buttons,
+                },
+                timestamp: message.timestamp,
+                type: 'interactive',
+              },
+            });
+          } else {
+            logger.warn('Payload de mensagem interativa ausente:', { data: message });
+          }
+          break;
 
-                this.socketHandler.emitNewMessage({
-                    from: message.from,
-                    body: {
-                        text: message.text || message.caption,
-                        buttonText: null,
-                        options: buttons,
-                    },
-                    timestamp: message.timestamp,
-                    type: 'interactive',
-                });
-                logger.info('Mensagem interativa enviada', { data: {
-                  from: message.from,
-                  body: {
-                      text: message.text || message.caption,
-                      buttonText: null,
-                      options: buttons,
-                  },
-                  timestamp: message.timestamp,
-                  type: 'interactive',
-              }})
-            } else {
-                logger.warn('Payload de mensagem interativa ausente:', { data: message });
-            }
-            break;
         default:
           logger.warn(`Tipo de mensagem desconhecido: ${message.type}`);
           logger.warn('Mensagem:', { data: message });
           break;
       }
     } else {
-      logger.error('Client ou SocketHandler não estão inicializados.');
+      logger.error('SocketHandler não está inicializado.');
     }
   }
 
+  // Método alterado para utilizar chamada HTTP POST para o container apartado,
+  // com tratamento para evitar log de estruturas circulares
   async sendMessage(to: ChatId, message: string) {
-    if (this.client && this.phoneList.some((item: any) => item.number === to)) {
+    if (this.phoneList.some((item: any) => item.number === to)) {
       try {
-        await this.client.sendText(to, message);
-        logger.info(`Mensagem enviada para ${to}: ${message}`);
+        const response = await axios.post(
+          `${process.env.OPENWA_API_URL}/sendText`,
+          { args: { to, content: message } },
+          {
+            // Inclua a chave de autenticação no header (ou substitua "Authorization" conforme a documentação do open-wa)
+            headers: {
+              api_key: process.env.OPENWA_API_KEY || "mYs3cur3K3y!",
+            },
+          }
+        );
+        logger.info(`Mensagem enviada para ${to} via API: ${message}`);
+        return response.data;
       } catch (error) {
-        logger.error(`Erro ao enviar mensagem para ${to}:`, error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logger.error(`Erro ao enviar mensagem para ${to} via API: ${errorMsg}`);
       }
     } else {
-      if (!this.phoneList.some((item: any) => item.number === to)) {
-        logger.warning(`Número ${to} não está na lista de números permitidos.`);
-      }
-      logger.error('Client não está inicializado.');
+      logger.warning(`Número ${to} não está na lista de números permitidos.`);
+      logger.error("Client não está inicializado.");
     }
   }
 
@@ -167,11 +188,12 @@ class WhatsAppBot {
         error: this.error,
       };
     } catch (err: any) {
-      logger.error('Erro ao verificar a conexão:', err);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      logger.error('Erro ao verificar a conexão:', errorMsg);
       return {
         authenticated: false,
         initialized: false,
-        error: err,
+        error: errorMsg,
       };
     }
   }
