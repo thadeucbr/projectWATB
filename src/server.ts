@@ -9,6 +9,7 @@ import logger from './config/logger';
 
 const PORT = process.env.PORT || 3000;
 const app = express();
+app.use(express.json());
 
 // Configure o CORS para permitir apenas a origem do front-end
 app.use(cors({
