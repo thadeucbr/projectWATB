@@ -16,18 +16,12 @@ class SocketHandler {
 
     setupListeners() {
         this.io.on('connection', (socket) => {
-            logger.info('Um usuário se conectou');
-
             socket.on('ping', (data, callback) => {
                 callback('pong');
             })
             
             socket.on('sendMessage', async ({ to, message }) => {
                 await this.bot.sendMessage(to, message);
-            });
-
-            socket.on('disconnect', () => {
-                logger.info('Usuário desconectado');
             });
         });
     }

@@ -153,8 +153,6 @@ class WhatsAppBot {
     }
   }
 
-  // Método alterado para utilizar chamada HTTP POST para o container apartado,
-  // com tratamento para evitar log de estruturas circulares
   async sendMessage(to: ChatId, message: string) {
     if (this.phoneList.some((item: any) => item.number === to)) {
       try {
@@ -162,7 +160,6 @@ class WhatsAppBot {
           `${process.env.OPENWA_API_URL}/sendText`,
           { args: { to, content: message } },
           {
-            // Inclua a chave de autenticação no header (ou substitua "Authorization" conforme a documentação do open-wa)
             headers: {
               api_key: process.env.OPENWA_API_KEY || "mYs3cur3K3y!",
             },
