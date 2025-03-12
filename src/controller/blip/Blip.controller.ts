@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import BlipService from './Blip.service';
 import logger from '../../config/logger';
 import { DeleteContextDTO, GetContextDTO, ResetContextDTO } from './Blip.dto';
+
 export default class BlipController {
   private req: Request;
   private res: Response;
@@ -13,11 +14,25 @@ export default class BlipController {
     this.service = new BlipService();
   }
 
-  async deleteContext(): Promise<void> { 
+  private authorize(router: string): string {
+    const routerKeys = JSON.parse(process.env.ROUTER_KEYS || '[]') as {
+      router: string;
+      key: string;
+    }[];
+    const key = routerKeys.find((item) => item.router === router);
+    return key ? key.key : '';
+  }
+
+  async deleteContext(): Promise<void> {
     try {
-      const { userId, varName, authorize } = this.req.body as DeleteContextDTO;
-      if (!userId || !varName || !authorize) {
-        this.res.status(400).json({ success: false, message: "userId, varName and authorize required" });
+      const { userId, varName, router } = this.req.query as unknown as DeleteContextDTO;
+      if (!userId || !varName || !router) {
+        this.res.status(400).json({ success: false, message: 'userId, varName and router required' });
+        return;
+      }
+      const authorize = this.authorize(router);
+      if (!authorize) {
+        this.res.status(400).json({ success: false, message: 'Invalid router' });
         return;
       }
       const result = await this.service.deleteContext({ userId, varName, authorize });
@@ -30,9 +45,14 @@ export default class BlipController {
 
   async getContext(): Promise<void> {
     try {
-      const { userId, authorize } = this.req.body as GetContextDTO;
-      if (!userId || !authorize) {
-        this.res.status(400).json({ success: false, message: "userId and authorize required" });
+      const { userId, router } = this.req.query as unknown as GetContextDTO;
+      if (!userId || !router) {
+        this.res.status(400).json({ success: false, message: 'userId and router required' });
+        return;
+      }
+      const authorize = this.authorize(router);
+      if (!authorize) {
+        this.res.status(400).json({ success: false, message: 'Invalid router' });
         return;
       }
       const result = await this.service.getContext({ userId, authorize });
@@ -45,9 +65,14 @@ export default class BlipController {
 
   async resetContext(): Promise<void> {
     try {
-      const { phone, authorize } = this.req.body as ResetContextDTO;
-      if (!phone || !authorize) {
-        this.res.status(400).json({ success: false, message: "phone and authorize required" });
+      const { phone, router } = this.req.body as ResetContextDTO;
+      if (!phone || !router) {
+        this.res.status(400).json({ success: false, message: 'phone and router required' });
+        return;
+      }
+      const authorize = this.authorize(router);
+      if (!authorize) {
+        this.res.status(400).json({ success: false, message: 'Invalid router' });
         return;
       }
       const result = await this.service.resetContext({ phone, authorize });
