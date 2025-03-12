@@ -17,7 +17,7 @@ app.use(cors({
     'https://project6.barbudas.com', // produção
     'http://localhost:5173'         // se quiser testar local
   ],
-  methods: ['GET','POST'],
+  methods: ['GET','POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true // se precisar enviar cookies ou headers autenticados
 }));
