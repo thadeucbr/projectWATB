@@ -5,7 +5,7 @@ import logger from '../../config/logger';
 export default class BlipService {
   constructor() {}
 
-   async deleteContext(data: DeleteContextDTO): Promise<string | undefined> {
+  async deleteContext(data: DeleteContextDTO): Promise<string | undefined> {
     const { userId, varName, authorize } = data;
     const headers = { Authorization: authorize, 'Content-Type': 'application/json' };
     const contact = this.formatUserId(userId);
@@ -19,13 +19,15 @@ export default class BlipService {
       const response = await axios.post('https://safra.http.msging.net/commands', body, {
         headers,
       });
-      const data =
-        typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-      if (!data) {
+      const responseData =
+        typeof response.data === 'string'
+          ? JSON.parse(response.data)
+          : response.data;
+      if (!responseData) {
         logger.error(contact + ' - ' + varName + ' - Empty response');
         return;
       }
-      const { status } = data;
+      const { status } = responseData;
       logger.info(status + ' - ' + contact + ' - ' + varName);
       return status;
     } catch (error: any) {
@@ -34,7 +36,7 @@ export default class BlipService {
     }
   }
 
-   async getContext(data: GetContextDTO): Promise<any[]> {
+  async getContext(data: GetContextDTO): Promise<any[]> {
     const { userId, authorize } = data;
     const headers = { Authorization: authorize, 'Content-Type': 'application/json' };
     const contact = this.formatUserId(userId);
@@ -48,9 +50,11 @@ export default class BlipService {
       const response = await axios.post('https://safra.http.msging.net/commands', body, {
         headers,
       });
-      const data =
-        typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-      const { resource, status } = data;
+      const responseData =
+        typeof response.data === 'string'
+          ? JSON.parse(response.data)
+          : response.data;
+      const { resource, status } = responseData;
       logger.info('auth: ' + authorize);
       logger.info(status + ' - ' + contact);
       if (status === 'success') {
@@ -63,8 +67,20 @@ export default class BlipService {
     }
   }
 
-   delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  async deleteContextWithIncrementalDelay(data: DeleteContextDTO): Promise<string | undefined> {
+    let delayMs = 50;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await this.deleteContext(data);
+      } catch (error) {
+        if (attempt < 2) {
+          await this.delay(delayMs);
+          delayMs = Math.min(delayMs + 50, 150);
+        } else {
+          throw error;
+        }
+      }
+    }
   }
 
   async resetContext(
@@ -75,13 +91,16 @@ export default class BlipService {
       const contact = this.formatUserId(phone);
       const contexts = await this.getContext({ userId: contact, authorize });
       for (const context of contexts) {
-        await this.deleteContext({ userId: contact, varName: context, authorize });
-        await this.delay(250);
+        await this.deleteContextWithIncrementalDelay({ userId: contact, varName: context, authorize });
       }
       return { success: true, message: 'Contexts deleted successfully' };
     } catch (e) {
       return { success: false, message: 'Error deleting contexts' };
     }
+  }
+
+  delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   formatUserId(userId: string): string {
