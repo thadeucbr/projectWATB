@@ -1,6 +1,5 @@
-version: "3.8"
 services:
-  app:
+  projectwatb-app:
     build: .
     ports:
       - "${PORT}:${PORT}"
@@ -13,7 +12,9 @@ services:
       - CHOKIDAR_USEPOLLING=true
     command: npm run dev
     networks:
-      - rede-compartilhada
+      rede-compartilhada:
+        aliases:
+          - projectwatb-app
 
 networks:
   rede-compartilhada:
