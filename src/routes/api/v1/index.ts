@@ -13,4 +13,7 @@ apiRouterV1.use('/v1', whatsappRouterV1);
 apiRouterV1.use('/v1', blipRouterV1);
 apiRouterV1.use('/v1', testFileRouter);
 
+apiRouterV1.get('/ping', (req, res) => {
+  res.status(200).json({ message: 'pong' });
+});
 export default apiRouterV1;
